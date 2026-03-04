@@ -10,7 +10,15 @@ import { ReturnsModule } from './modules/returns/returns.module';
 import { ParametersModule } from './modules/parameters/parameters.module';
 
 @Module({
-  imports: [PrismaModule, AuthModule, ProductsModule, SalesModule, InventoryModule, ReturnsModule, ParametersModule],
+  imports: [
+    PrismaModule,
+    AuthModule,
+    ProductsModule,
+    SalesModule,
+    InventoryModule,
+    ReturnsModule,
+    ParametersModule,
+  ],
   controllers: [AppController],
   providers: [AppService],
 })

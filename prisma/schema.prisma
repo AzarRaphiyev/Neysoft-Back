@@ -4,19 +4,19 @@ generator client {
 
 datasource db {
   provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
 }
 
-// ================= İSTİFADƏÇİLƏR =================
 
 model User {
-  id        String   @id @default(uuid())
-  username  String   @unique
-  password  String
-  role      Role     @default(CASHIER)
-  createdAt DateTime @default(now())
-  sales     Sale[]
+  id              String           @id @default(uuid())
+  username        String           @unique
+  password        String
+  role            Role             @default(CASHIER)
+  createdAt       DateTime         @default(now())
+  sales           Sale[]
+  customerReturns CustomerReturn[]
+  supplierReturns SupplierReturn[]
+  expenses        Expense[]
 }
 
 enum Role {
@@ -31,8 +31,6 @@ model Customer {
   sales     Sale[]
   createdAt DateTime @default(now())
 }
-
-// ================= PARAMETRLƏR =================
 
 model Category {
   id       String    @id @default(uuid())
@@ -60,8 +58,6 @@ model Supplier {
   products  Product[]
 }
 
-// ================= MƏHSULLAR VƏ ANBAR =================
-
 model Product {
   id            String   @id @default(uuid())
   barcode       String   @unique
@@ -70,7 +66,6 @@ model Product {
   purchasePrice Float
   salePrice     Float
 
-  // Əlaqələr (Relations)
   categoryId    String?
   category      Category? @relation(fields: [categoryId], references: [id])
   colorId       String?
@@ -80,11 +75,11 @@ model Product {
   supplierId    String?
   supplier      Supplier? @relation(fields: [supplierId], references: [id])
 
-  saleItems      SaleItem[]
-  inventoryItems InventoryItem[]
+  saleItems           SaleItem[]
+  inventoryItems      InventoryItem[]
+  customerReturnItems CustomerReturnItem[]
+  supplierReturnItems SupplierReturnItem[]
 }
-
-// ================= QAİMƏLƏR (MALLARIN DAXİL OLMASI) =================
 
 model InventoryReceipt {
   id          String          @id @default(uuid())
@@ -95,7 +90,8 @@ model InventoryReceipt {
   supplierId  String
   supplier    Supplier        @relation(fields: [supplierId], references: [id])
   
-  items       InventoryItem[]
+  items           InventoryItem[]
+  supplierReturns SupplierReturn[]
 }
 
 model InventoryItem {
@@ -109,8 +105,6 @@ model InventoryItem {
   receiptId        String
   inventoryReceipt InventoryReceipt @relation(fields: [receiptId], references: [id])
 }
-
-// ================= SATIŞ VƏ QƏBZLƏR =================
 
 model Sale {
   id            String        @id @default(uuid())
@@ -127,7 +121,8 @@ model Sale {
   customerId    String?
   customer      Customer?     @relation(fields: [customerId], references: [id])
 
-  items         SaleItem[]
+  items           SaleItem[]
+  customerReturns CustomerReturn[]
 }
 
 model SaleItem {
@@ -147,8 +142,6 @@ enum PaymentMethod {
   CASH
   CARD
 }
-
-// ================= GERİ QAYTARMA (MÜŞTƏRİ) =================
 
 model CustomerReturn {
   id          String               @id @default(uuid())
@@ -178,8 +171,6 @@ model CustomerReturnItem {
   product          Product        @relation(fields: [productId], references: [id])
 }
 
-// ================= GERİ QAYTARMA (TƏCHİZATÇI) =================
-
 model SupplierReturn {
   id          String               @id @default(uuid())
   returnCode  String               @unique
@@ -208,8 +199,6 @@ model SupplierReturnItem {
   product          Product        @relation(fields: [productId], references: [id])
 }
 
-// ================= XƏRCLƏR (MƏSƏLƏN: İCARƏ, MAAŞ VƏ S.) =================
-
 model Expense {
   id          String   @id @default(uuid())
   title       String
@@ -220,8 +209,6 @@ model Expense {
   userId      String
   user        User     @relation(fields: [userId], references: [id])
 }
-
-// ================= MAĞAZA MƏLUMATLARI =================
 
 model StoreSettings {
   id          String   @id @default(uuid())
