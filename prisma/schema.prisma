@@ -8,11 +8,21 @@ datasource db {
 
 
 model User {
-  id              String           @id @default(uuid())
-  username        String           @unique
-  password        String
-  role            Role             @default(CASHIER)
-  createdAt       DateTime         @default(now())
+  id                String           @id @default(uuid())
+  username          String           @unique
+  email             String           @unique // Email mütləq və unikal olmalıdır
+  password          String
+  role              Role             @default(CASHIER)
+  
+  // Email təsdiqi və təhlükəsizlik üçün yeni sahələr
+  isVerified        Boolean          @default(false) // Email təsdiq olunubmu?
+  verificationToken String?          // Qeydiyyat zamanı göndərilən token
+  resetToken        String?          // Şifrə yeniləmə zamanı istifadə olunacaq token
+  resetTokenExpires DateTime?        // Şifrə yeniləmə tokeninin vaxtı
+  
+  createdAt         DateTime         @default(now())
+  
+  // Mövcud əlaqələr
   sales           Sale[]
   customerReturns CustomerReturn[]
   supplierReturns SupplierReturn[]
