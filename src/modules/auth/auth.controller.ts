@@ -1,7 +1,11 @@
 import { Controller, Post, Body, Get, Query } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { CreateAuthDto } from './dto/create-auth.dto';
+import { LoginAuthDto } from './dto/login-auth.dto'; 
 import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
+
 
 @ApiTags('auth')
 @Controller('auth')
@@ -16,14 +20,25 @@ export class AuthController {
 
   @Get('verify')
   @ApiOperation({ summary: 'Email təsdiqləmə linki' })
-  @ApiQuery({ name: 'token', description: 'Emailə göndərilən unikal UUID' })
+  @ApiQuery({ name: 'token', description: 'Emailə göndərilən unikal token' })
   verify(@Query('token') token: string) {
     return this.authService.verifyEmail(token);
   }
 
   @Post('login')
-  @ApiOperation({ summary: 'Sistemə giriş (Yalnız təsdiqlənmiş istifadəçilər)' })
-  login(@Body() createAuthDto: CreateAuthDto) {
-    return this.authService.login(createAuthDto);
+  @ApiOperation({ summary: 'Sistemə giriş (Yalnız username və password ilə)' })
+  login(@Body() loginDto: LoginAuthDto) { // Burada CreateAuthDto əvəzinə LoginAuthDto istifadə etdik
+    return this.authService.login(loginDto);
+  }
+  @Post('forgot-password')
+  @ApiOperation({ summary: 'Şifremi Unuttum (Email gönderir)' })
+  forgotPassword(@Body() dto: ForgotPasswordDto) {
+    return this.authService.forgotPassword(dto);
+  }
+
+  @Post('reset-password')
+  @ApiOperation({ summary: 'Yeni şifre belirleme (Token ve yeni şifre ile)' })
+  resetPassword(@Body() dto: ResetPasswordDto) {
+    return this.authService.resetPassword(dto);
   }
 }

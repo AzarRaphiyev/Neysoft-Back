@@ -5,6 +5,10 @@ import * as bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
 import * as nodemailer from 'nodemailer';
 import { CreateAuthDto } from './dto/create-auth.dto';
+import { LoginAuthDto } from './dto/login-auth.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
+import { NotFoundException } from '@nestjs/common';
 
 @Injectable()
 export class AuthService {
@@ -19,7 +23,7 @@ export class AuthService {
       service: 'gmail',
       auth: {
         user: 'raphiyev@gmail.com', // Öz emailiniz
-        pass: 'xxxx xxxx xxxx xxxx', // Gmail-dən aldığınız "App Password"
+        pass: 'cyph udpl fxds nsdi', // Gmail-dən aldığınız "App Password"
       },
     });
   }
@@ -66,21 +70,96 @@ export class AuthService {
     return { message: 'Email uğurla təsdiqləndi! İndi giriş edə bilərsiniz.' };
   }
 
-  async login(dto: CreateAuthDto) {
-    const user = await this.prisma.user.findUnique({ where: { username: dto.username } });
-    
+  // 3. GİRİŞ (LOGIN) METODU
+  async login(dto: LoginAuthDto) { // <-- Bura dəyişdi
+    // Kullanıcıyı veritabanından bul
+    const user = await this.prisma.user.findUnique({
+      where: { username: dto.username },
+    });
+
+    // Kullanıcı var mı ve şifre doğru mu kontrol et
     if (!user || !(await bcrypt.compare(dto.password, user.password))) {
-      throw new UnauthorizedException('Məlumatlar yanlışdır.');
+      throw new UnauthorizedException('Kullanıcı adı veya şifre hatalı!');
     }
 
+    // Email doğrulanmış mı kontrol et
     if (!user.isVerified) {
-      throw new UnauthorizedException('Zəhmət olmasa əvvəlcə emailinizi təsdiqləyin.');
+      throw new UnauthorizedException('Lütfen önce email adresinize gönderilen linkten hesabınızı doğrulayın.');
     }
 
+    // Her şey doğruysa JWT Token oluştur
     const payload = { sub: user.id, username: user.username, role: user.role };
+    const accessToken = await this.jwtService.signAsync(payload);
+
     return {
-      accessToken: await this.jwtService.signAsync(payload),
-      user: { username: user.username, role: user.role }
+      message: 'Giriş başarılı!',
+      accessToken,
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+      },
     };
+  }
+
+  // 4. ŞİFREMİ UNUTTUM (FORGOT PASSWORD)
+  async forgotPassword(dto: ForgotPasswordDto) {
+    const user = await this.prisma.user.findUnique({ where: { email: dto.email } });
+    
+    if (!user) {
+      throw new NotFoundException('Bu email adresi ile kayıtlı bir kullanıcı bulunamadı.');
+    }
+
+    // Sıfırlama için benzersiz bir token oluştur
+    const resetToken = uuidv4();
+    // Token için 1 saat geçerlilik süresi ayarla
+    const resetTokenExpires = new Date(Date.now() + 1 * 60 * 60 * 1000);
+
+    // Kullanıcının veritabanına tokeni ve süresini kaydet
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { resetToken, resetTokenExpires }
+    });
+
+    // Email gönder (Frontend tarafında bu linkin karşılanması gerekir, şimdilik backend linki koyduk)
+    const url = `http://localhost:3000/auth/reset-password?token=${resetToken}`;
+    await this.transporter.sendMail({
+      to: user.email,
+      subject: 'Neysoft - Şifre Sıfırlama Talebi',
+      html: `Şifrenizi sıfırlamak için <a href="${url}">buraya tıklayın</a>.<br><br><b>Not:</b> Bu link 1 saat boyunca geçerlidir.`,
+    });
+
+    return { message: 'Şifre sıfırlama linki email adresinize gönderildi.' };
+  }
+
+  // 5. ŞİFREYİ SIFIRLA (RESET PASSWORD)
+  async resetPassword(dto: ResetPasswordDto) {
+    // Tokeni eşleşen ve süresi (resetTokenExpires) şu anki zamandan büyük olan kullanıcıyı bul
+    const user = await this.prisma.user.findFirst({
+      where: {
+        resetToken: dto.token,
+        resetTokenExpires: { gt: new Date() } // "gt" = greater than (şu andan büyük olmalı)
+      }
+    });
+
+    if (!user) {
+      throw new BadRequestException('Geçersiz veya süresi dolmuş sıfırlama tokeni.');
+    }
+
+    // Yeni şifreyi hash'le
+    const hashedPassword = await bcrypt.hash(dto.newPassword, 10);
+
+    // Kullanıcının şifresini güncelle ve tokenleri temizle
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        password: hashedPassword,
+        resetToken: null,
+        resetTokenExpires: null
+      }
+    });
+
+    return { message: 'Şifreniz başarıyla güncellendi. Artık yeni şifrenizle giriş yapabilirsiniz.' };
   }
 }
