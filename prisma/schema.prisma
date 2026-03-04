@@ -1,0 +1,233 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ================= İSTİFADƏÇİLƏR =================
+
+model User {
+  id        String   @id @default(uuid())
+  username  String   @unique
+  password  String
+  role      Role     @default(CASHIER)
+  createdAt DateTime @default(now())
+  sales     Sale[]
+}
+
+enum Role {
+  ADMIN
+  CASHIER
+}
+
+model Customer {
+  id        String   @id @default(uuid())
+  fullName  String
+  phone     String?
+  sales     Sale[]
+  createdAt DateTime @default(now())
+}
+
+// ================= PARAMETRLƏR =================
+
+model Category {
+  id       String    @id @default(uuid())
+  name     String    @unique
+  products Product[]
+}
+
+model Color {
+  id       String    @id @default(uuid())
+  name     String    @unique
+  products Product[]
+}
+
+model Size {
+  id       String    @id @default(uuid())
+  name     String    @unique
+  products Product[]
+}
+
+model Supplier {
+  id        String             @id @default(uuid())
+  name      String
+  contact   String?
+  receipts  InventoryReceipt[]
+  products  Product[]
+}
+
+// ================= MƏHSULLAR VƏ ANBAR =================
+
+model Product {
+  id            String   @id @default(uuid())
+  barcode       String   @unique
+  name          String
+  stockQuantity Int      @default(0)
+  purchasePrice Float
+  salePrice     Float
+
+  // Əlaqələr (Relations)
+  categoryId    String?
+  category      Category? @relation(fields: [categoryId], references: [id])
+  colorId       String?
+  color         Color?    @relation(fields: [colorId], references: [id])
+  sizeId        String?
+  size          Size?     @relation(fields: [sizeId], references: [id])
+  supplierId    String?
+  supplier      Supplier? @relation(fields: [supplierId], references: [id])
+
+  saleItems      SaleItem[]
+  inventoryItems InventoryItem[]
+}
+
+// ================= QAİMƏLƏR (MALLARIN DAXİL OLMASI) =================
+
+model InventoryReceipt {
+  id          String          @id @default(uuid())
+  receiptCode String          @unique
+  date        DateTime        @default(now())
+  totalAmount Float           @default(0)
+  
+  supplierId  String
+  supplier    Supplier        @relation(fields: [supplierId], references: [id])
+  
+  items       InventoryItem[]
+}
+
+model InventoryItem {
+  id               String           @id @default(uuid())
+  quantity         Int
+  purchasePrice    Float
+  
+  productId        String
+  product          Product          @relation(fields: [productId], references: [id])
+  
+  receiptId        String
+  inventoryReceipt InventoryReceipt @relation(fields: [receiptId], references: [id])
+}
+
+// ================= SATIŞ VƏ QƏBZLƏR =================
+
+model Sale {
+  id            String        @id @default(uuid())
+  receiptNo     String        @unique
+  date          DateTime      @default(now())
+  totalAmount   Float
+  discount      Float         @default(0)
+  finalAmount   Float
+  paymentMethod PaymentMethod
+
+  userId        String
+  user          User          @relation(fields: [userId], references: [id])
+  
+  customerId    String?
+  customer      Customer?     @relation(fields: [customerId], references: [id])
+
+  items         SaleItem[]
+}
+
+model SaleItem {
+  id        String  @id @default(uuid())
+  quantity  Int
+  price     Float
+  discount  Float   @default(0)
+
+  saleId    String
+  sale      Sale    @relation(fields: [saleId], references: [id])
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+}
+
+// ================= GERİ QAYTARMA (MÜŞTƏRİ) =================
+
+model CustomerReturn {
+  id          String               @id @default(uuid())
+  returnCode  String               @unique
+  date        DateTime             @default(now())
+  totalAmount Float
+  reason      String?
+  
+  saleId      String
+  sale        Sale                 @relation(fields: [saleId], references: [id])
+  
+  userId      String
+  user        User                 @relation(fields: [userId], references: [id])
+
+  items       CustomerReturnItem[]
+}
+
+model CustomerReturnItem {
+  id               String         @id @default(uuid())
+  quantity         Int
+  refundAmount     Float
+  
+  returnId         String
+  customerReturn   CustomerReturn @relation(fields: [returnId], references: [id])
+  
+  productId        String
+  product          Product        @relation(fields: [productId], references: [id])
+}
+
+// ================= GERİ QAYTARMA (TƏCHİZATÇI) =================
+
+model SupplierReturn {
+  id          String               @id @default(uuid())
+  returnCode  String               @unique
+  date        DateTime             @default(now())
+  totalAmount Float
+  reason      String?
+  
+  receiptId   String
+  receipt     InventoryReceipt     @relation(fields: [receiptId], references: [id])
+  
+  userId      String
+  user        User                 @relation(fields: [userId], references: [id])
+
+  items       SupplierReturnItem[]
+}
+
+model SupplierReturnItem {
+  id               String         @id @default(uuid())
+  quantity         Int
+  refundAmount     Float
+  
+  returnId         String
+  supplierReturn   SupplierReturn @relation(fields: [returnId], references: [id])
+  
+  productId        String
+  product          Product        @relation(fields: [productId], references: [id])
+}
+
+// ================= XƏRCLƏR (MƏSƏLƏN: İCARƏ, MAAŞ VƏ S.) =================
+
+model Expense {
+  id          String   @id @default(uuid())
+  title       String
+  amount      Float
+  date        DateTime @default(now())
+  description String?
+  
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+}
+
+// ================= MAĞAZA MƏLUMATLARI =================
+
+model StoreSettings {
+  id          String   @id @default(uuid())
+  name        String
+  address     String?
+  phone       String?
+  logoUrl     String?
+  currency    String   @default("AZN")
+}
