@@ -3,6 +3,8 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { CreateColorDto } from './dto/create-color.dto';
 import { CreateSizeDto } from './dto/create-size.dto';
+import { CreateSupplierDto } from './dto/create-supplier.dto';
+import { UpdateSupplierDto } from './dto/update-supplier.dto';
 
 @Injectable()
 export class ParametersService {
@@ -69,5 +71,53 @@ export class ParametersService {
       throw new NotFoundException('Ölçü tapılmadı');
     }
     return this.prisma.size.delete({ where: { id } });
+  }
+
+  // --- TƏCHİZATÇI (SUPPLIER) ---
+  async createSupplier(dto: CreateSupplierDto) {
+    const existing = await this.prisma.supplier.findFirst({ where: { name: dto.name } });
+    if (existing) {
+      throw new ConflictException('Bu adda təchizatçı artıq mövcuddur');
+    }
+    return this.prisma.supplier.create({ data: { name: dto.name, contact: dto.contact } });
+  }
+
+  async getSuppliers() {
+    return this.prisma.supplier.findMany();
+  }
+
+  async getSupplierById(id: string) {
+    const supplier = await this.prisma.supplier.findUnique({ where: { id } });
+    if (!supplier) {
+      throw new NotFoundException('Təchizatçı tapılmadı');
+    }
+    return supplier;
+  }
+
+  async updateSupplier(id: string, dto: UpdateSupplierDto) {
+    const existing = await this.prisma.supplier.findUnique({ where: { id } });
+    if (!existing) {
+      throw new NotFoundException('Təchizatçı tapılmadı');
+    }
+
+    if (dto.name && dto.name !== existing.name) {
+      const nameCheck = await this.prisma.supplier.findFirst({ where: { name: dto.name } });
+      if (nameCheck) {
+        throw new ConflictException('Bu adda təchizatçı artıq mövcuddur');
+      }
+    }
+
+    return this.prisma.supplier.update({
+      where: { id },
+      data: dto,
+    });
+  }
+
+  async deleteSupplier(id: string) {
+    const existing = await this.prisma.supplier.findUnique({ where: { id } });
+    if (!existing) {
+      throw new NotFoundException('Təchizatçı tapılmadı');
+    }
+    return this.prisma.supplier.delete({ where: { id } });
   }
 }

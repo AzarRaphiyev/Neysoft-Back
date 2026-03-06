@@ -2,10 +2,10 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsNotEmpty, IsString, IsNumber, IsOptional, Min } from 'class-validator';
 
 export class CreateProductDto {
-  @ApiProperty({ description: 'Məhsulun unikal barkodu (məsələn: 1234567890123)' })
+  @ApiPropertyOptional({ description: 'Məhsulun unikal barkodu (məsələn: 1234567890123)' })
   @IsNotEmpty({ message: 'Barkod mütləq daxil edilməlidir' })
   @IsString({ message: 'Barkod mətn formatında olmalıdır' })
-  barcode: string;
+  barcode?: string;
 
   @ApiProperty({ description: 'Məhsulun adı' })
   @IsNotEmpty({ message: 'Məhsulun adı mütləq daxil edilməlidir' })

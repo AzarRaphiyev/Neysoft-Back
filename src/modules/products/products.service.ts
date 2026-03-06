@@ -2,28 +2,82 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { PrismaService } from '../../prisma/prisma.service';
+import * as bwipjs from 'bwip-js';
 
 @Injectable()
 export class ProductsService {
   constructor(private prisma: PrismaService) {}
 
+  // --- KÖMƏKÇİ FUNKSİYALAR ---
+
+  // 1. Avtomatik 13 rəqəmli barkod yaradan funksiya (Əgər istifadəçi boş buraxarsa)
+  private generateBarcode(): string {
+    const randomNum = Math.floor(Math.random() * 10000000000000);
+    return randomNum.toString().padStart(13, '0');
+  }
+
+  // 2. Qara-ağ ştrixkod şəkli (PNG Buffer) yaradan funksiya (Çap etmək üçün)
+  async generateBarcodeImage(text: string): Promise<Buffer> {
+    try {
+      const buffer = await bwipjs.toBuffer({
+        bcid: 'code128',       // Standart ştrixkod növü
+        text: text,            // Ştrixkodun içinə yazılacaq kod
+        scale: 3,              // Şəklin böyüklüyü
+        height: 10,            // Xətlərin hündürlüyü
+        includetext: true,     // Rəqəmləri ştrixkodun altında göstər
+        textxalign: 'center',  // Rəqəmləri mərkəzlə
+      });
+      return buffer;
+    } catch (error) {
+      throw new BadRequestException('Ştrixkod şəkli yaradıla bilmədi');
+    }
+  }
+
+  // --- ƏSAS CRUD (MƏHSUL) FUNKSİYALARI ---
+
   async create(createProductDto: CreateProductDto) {
-    // Barkodun unikal olub-olmadığını yoxlayırıq
+    // 1. Əgər barkod göndərilməyibsə və ya boşdursa, avtomatik yarat!
+    const finalBarcode = createProductDto.barcode && createProductDto.barcode.trim() !== ''
+      ? createProductDto.barcode
+      : this.generateBarcode();
+
+    // 2. Barkodun unikal olub-olmadığını yoxlayırıq
     const existingProduct = await this.prisma.product.findUnique({
-      where: { barcode: createProductDto.barcode },
+      where: { barcode: finalBarcode },
     });
 
     if (existingProduct) {
       throw new BadRequestException('Bu barkod ilə məhsul artıq mövcuddur');
     }
 
+    // 3. Məhsulu bazaya yazırıq
     return this.prisma.product.create({
-      data: createProductDto,
+      data: {
+        ...createProductDto,
+        barcode: finalBarcode, // DTO-dakı barkodu əzib öz tapdığımız/yaratdığımızı qoyuruq
+      },
     });
   }
 
-  async findAll() {
+ // --- Axtarış və Filterləmə funksiyası ---
+  async findAll(search?: string, isOutOfStock?: boolean) {
+    const whereCondition: any = {};
+
+    // 1. Əgər 'search' (axtarış) sözü göndərilibsə: həm ada, həm də barkoda görə axtar
+    if (search) {
+      whereCondition.OR = [
+        { name: { contains: search, mode: 'insensitive' } }, // Ada görə (Böyük/kiçik hərf həssaslığı olmadan)
+        { barcode: { contains: search } },                   // Barkoda görə
+      ];
+    }
+
+    // 2. Əgər 'isOutOfStock' true olaraq seçilibsə: yalnız stoku 0 olanları gətir
+    if (isOutOfStock) {
+      whereCondition.stockQuantity = 0;
+    }
+
     return this.prisma.product.findMany({
+      where: whereCondition,
       include: {
         category: true,
         color: true,
@@ -31,8 +85,8 @@ export class ProductsService {
         supplier: true,
       },
       orderBy: {
-        name: 'asc'
-      }
+        name: 'asc', // Adına görə əlifba sırası ilə düzür
+      },
     });
   }
 

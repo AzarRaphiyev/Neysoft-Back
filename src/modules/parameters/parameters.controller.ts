@@ -1,9 +1,11 @@
-import { Controller, Get, Post, Body, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Delete, Patch } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiParam } from '@nestjs/swagger';
 import { ParametersService } from './parameters.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { CreateColorDto } from './dto/create-color.dto';
 import { CreateSizeDto } from './dto/create-size.dto';
+import { CreateSupplierDto } from './dto/create-supplier.dto';
+import { UpdateSupplierDto } from './dto/update-supplier.dto';
 
 @ApiTags('parameters')
 @Controller('parameters')
@@ -68,5 +70,39 @@ export class ParametersController {
   @ApiParam({ name: 'id', description: 'Ölçü ID-si' })
   deleteSize(@Param('id') id: string) {
     return this.parametersService.deleteSize(id);
+  }
+
+  // --- TƏCHİZATÇI (SUPPLIER) ---
+  @Post('supplier')
+  @ApiOperation({ summary: 'Yeni təchizatçı əlavə et' })
+  createSupplier(@Body() createSupplierDto: CreateSupplierDto) {
+    return this.parametersService.createSupplier(createSupplierDto);
+  }
+
+  @Get('supplier')
+  @ApiOperation({ summary: 'Bütün təchizatçıları gətir' })
+  getSuppliers() {
+    return this.parametersService.getSuppliers();
+  }
+
+  @Get('supplier/:id')
+  @ApiOperation({ summary: 'Təchizatçını ID-yə əsasən gətir' })
+  @ApiParam({ name: 'id', description: 'Təchizatçı ID-si' })
+  getSupplierById(@Param('id') id: string) {
+    return this.parametersService.getSupplierById(id);
+  }
+
+  @Patch('supplier/:id')
+  @ApiOperation({ summary: 'Təchizatçı məlumatlarını yenilə' })
+  @ApiParam({ name: 'id', description: 'Təchizatçı ID-si' })
+  updateSupplier(@Param('id') id: string, @Body() updateSupplierDto: UpdateSupplierDto) {
+    return this.parametersService.updateSupplier(id, updateSupplierDto);
+  }
+
+  @Delete('supplier/:id')
+  @ApiOperation({ summary: 'Təchizatçını sil' })
+  @ApiParam({ name: 'id', description: 'Təchizatçı ID-si' })
+  deleteSupplier(@Param('id') id: string) {
+    return this.parametersService.deleteSupplier(id);
   }
 }
